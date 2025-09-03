@@ -1,15 +1,35 @@
 import React, { useState } from "react";
 import { FaGoogle, FaApple, FaFacebookF } from "react-icons/fa";
+import axios from "axios";
 
 const Register = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [phone, setPhone] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        alert(`Email: ${email}\nPassword: ${password}`);
+        setLoading(true);
+        setMessage("");
+
+        try {
+            const response = await axios.post("http://localhost:5000/register", {
+                email,
+                password,
+
+            });
+
+            setMessage("Registration successful!");
+            console.log(response.data);
+        } catch (error) {
+            setMessage(error.response?.data?.message || "Registration failed");
+            console.error(error.response?.data || error.message);
+        } finally {
+            setLoading(false);
+        }
     };
+
 
     return (
         <div
@@ -125,29 +145,6 @@ const Register = () => {
                             placeholder="Enter your email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
-                            style={{
-                                width: "90%",
-                                padding: "12px",
-                                borderRadius: "10px",
-                                border: "1px solid #ccc",
-                                fontSize: "14px",
-                                outline: "none",
-                            }}
-                        />
-                    </div>
-
-                    <div style={{ textAlign: "left", marginBottom: "15px" }}>
-                        <label
-                            style={{ fontSize: "13px", fontWeight: "bold", fontFamily: "sans-serif", color: "#444", display: "block", marginBottom: "6px" }}
-                        >
-                            phone number
-                        </label>
-                        <input
-                            type="phone number"
-                            placeholder="Enter your phone"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
                             required
                             style={{
                                 width: "90%",
