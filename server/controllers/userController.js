@@ -10,7 +10,6 @@ const registerUser = async (req, res) => {
         const userRecord = await admin.auth().createUser({
             email,
             password,
-
         });
 
         //db connection
