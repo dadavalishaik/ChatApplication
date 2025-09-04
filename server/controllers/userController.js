@@ -43,9 +43,7 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        // Firebase doesn't allow direct login from admin SDK.
-        // So you can use Firebase Client SDK on frontend for login,
-        // or verify email/password via Firebase Auth REST API here:
+        // verify email/password via Firebase Auth REST API here:
 
         const axios = require("axios");
         const apiKey = "AIzaSyBMoQRyVckJNaU6MTXIBbSpn1quc7K3gC8";
