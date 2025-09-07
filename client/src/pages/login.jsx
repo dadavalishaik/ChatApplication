@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../components/firebase"
+import { connectSocket } from "../components/socket";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -11,14 +14,12 @@ const Login = () => {
   const validate = () => {
     const tempErrors = {};
 
-    // Email validation
     if (!email) {
       tempErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       tempErrors.email = "Email is invalid";
     }
 
-    // Password validation
     if (!password) {
       tempErrors.password = "Password is required";
     } else if (password.length < 6) {
@@ -26,29 +27,37 @@ const Login = () => {
     }
 
     setErrors(tempErrors);
-
     return Object.keys(tempErrors).length === 0;
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!validate()) return; // stop if validation fails
 
     try {
+      // ✅ Sign in with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // ✅ Get ID token
+      const token = await user.getIdToken();
+      localStorage.setItem("idToken", token);
+
+      // connect socket after login
+      connectSocket(token);
+
+      // ✅ Call backend if required
       const res = await axios.post("http://localhost:5000/login", { email, password });
-      console.log("Login success:", res.data);
 
-      // Save token
-      localStorage.setItem("token", res.data.firebaseUser.idToken);
+      console.log("Backend login success:", res.data);
+      console.log("Firebase user:", user.email);
+      console.log("Stored token:", token);
 
-      // Redirect to ChatApp
       navigate("/chat");
     } catch (err) {
-      console.error("Login failed:", err.response?.data || err.message);
-      alert("Login failed: " + (err.response?.data?.message || err.message));
+      console.error("Login failed:", err.message);
+      alert("Login failed: " + err.message);
     }
   };
-
   return (
     <div
       style={{
@@ -72,10 +81,7 @@ const Login = () => {
           textAlign: "center",
         }}
       >
-        {/* Logo */}
         <div style={{ fontSize: "40px", marginBottom: "15px" }}>🌐</div>
-
-        {/* Title */}
         <h2
           style={{
             fontSize: "22px",
@@ -88,7 +94,6 @@ const Login = () => {
           Welcome back
         </h2>
 
-        {/* Form */}
         <form onSubmit={handleLogin}>
           {/* Email */}
           <div style={{ textAlign: "left", marginBottom: "15px" }}>
@@ -118,9 +123,7 @@ const Login = () => {
                 outline: "none",
               }}
             />
-            {errors.email && (
-              <span style={{ color: "red", fontSize: "12px" }}>{errors.email}</span>
-            )}
+            {errors.email && <span style={{ color: "red", fontSize: "12px" }}>{errors.email}</span>}
           </div>
 
           {/* Password */}
@@ -151,12 +154,9 @@ const Login = () => {
                 outline: "none",
               }}
             />
-            {errors.password && (
-              <span style={{ color: "red", fontSize: "12px" }}>{errors.password}</span>
-            )}
+            {errors.password && <span style={{ color: "red", fontSize: "12px" }}>{errors.password}</span>}
           </div>
 
-          {/* Remember me */}
           <div
             style={{
               display: "flex",
@@ -171,7 +171,6 @@ const Login = () => {
             </label>
           </div>
 
-          {/* Login button */}
           <button
             type="submit"
             style={{
@@ -190,13 +189,9 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Signup link */}
         <p style={{ marginTop: "18px", fontSize: "13px", color: "#444" }}>
           Don’t have an account?{" "}
-          <a
-            href="/register"
-            style={{ color: "#6c63ff", textDecoration: "none", fontWeight: "500" }}
-          >
+          <a href="/register" style={{ color: "#6c63ff", textDecoration: "none", fontWeight: "500" }}>
             Create account
           </a>
         </p>
@@ -206,9 +201,6 @@ const Login = () => {
 };
 
 export default Login;
-
-
-
 
 
 

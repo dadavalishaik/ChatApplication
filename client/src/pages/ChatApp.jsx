@@ -1,161 +1,354 @@
-import React, { useState } from "react";
-
-// Dummy data for users and messages
-const users = [
-  { name: "Harry Maguire", time: "09:12 AM", message: "You need to improve now", online: true },
-  { name: "United Family", time: "06:25 AM", message: "Rashford is typing...", online: true, typing: true },
-  { name: "Ramsus Højlund", time: "03:11 AM", message: "Bos, I need to talk today", online: false, unread: 2 },
-  { name: "Andre Onana", time: "11:34 AM", message: "I need more time bos 😔", online: true },
-  { name: "Reguilon", time: "09:12 AM", message: "", online: true },
-];
-
-const messages = [
-  { sender: "Harry Maguire", time: "08:34 AM", text: "Hey lads, tough game yesterday. Let's talk about what went wrong and how we can improve 😊" },
-  { sender: "Bruno Fernandes", time: "08:34 AM", text: "Agreed, Harry 👍. We had some good moments, but we need to be more clinical in front of the goal 😢" },
-  { sender: "You", time: "08:34 AM", text: "We need to control the midfield and exploit their defensive weaknesses. Bruno and Paul, I'm counting on your creativity. Marcus and Jadon, stretch their defense wide. Use your pace and take on their full-backs." },
-];
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { auth } from "../components/firebase";
+import { socket, connectSocket, disconnectSocket } from "../components/socket";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 const ChatApp = () => {
-  const [selectedUser, setSelectedUser] = useState(users[1]);
+  const [user, setUser] = useState(null); // logged-in user
+  const [selectedUser, setSelectedUser] = useState(null); // chat partner
+  const [messages, setMessages] = useState([]); // conversation messages
   const [input, setInput] = useState("");
+  const [error, setError] = useState(null);
+  const [users, setUsers] = useState([]);
+  const chatBodyRef = useRef(null);
+  const navigate = useNavigate();
+
+  // ✅ Get logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("idToken");
+        if (!token) {
+          setError("No token found. Please login first.");
+          return;
+        }
+
+        const res = await axios.get("http://localhost:5000/loggedinuser", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUser(res.data);
+        console.log("Logged-in user:", res.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Error fetching user");
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // ✅ Connect socket after user is set
+  useEffect(() => {
+    if (!user) return;
+
+    const token = localStorage.getItem("idToken");
+    connectSocket(token);
+
+    socket.on("connect", () => console.log("Socket connected:", socket.id));
+    socket.on("authenticated", (data) =>
+      console.log("Socket authenticated:", data.uid)
+    );
+    socket.on("disconnect", () => console.log("Socket disconnected"));
+    socket.on("unauthorized", () => console.warn("Socket unauthorized"));
+
+    // receive new messages
+    socket.on("receive_message", (msg) => {
+      const conversationId = [user.uid, msg.from === user.uid ? msg.to : msg.from]
+        .sort()
+        .join("_");
+
+      if (
+        selectedUser &&
+        conversationId === [user.uid, selectedUser.uid].sort().join("_")
+      ) {
+        setMessages((prev) => [...prev, msg]);
+
+        // mark as read
+        axios
+          .put(
+            `http://localhost:5000/messages/${conversationId}/read`,
+            {},
+            { headers: { Authorization: `Bearer ${localStorage.getItem("idToken")}` } }
+          )
+          .catch(console.error);
+      }
+    });
+
+    // ✅ Delivered status listener
+    socket.on("message_status", ({ messageId, delivered }) => {
+      if (delivered) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === messageId ? { ...m, delivered: true } : m
+          )
+        );
+      }
+    });
+
+    // ✅ Read receipt listener
+    socket.on("message_read_receipt", ({ messageId }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === messageId ? { ...m, read: true } : m
+        )
+      );
+    });
+
+    // user online/offline status
+    socket.on("user_status", ({ uid, online }) => {
+      setUsers((prev) =>
+        prev.map((u) => (u._id === uid ? { ...u, online } : u))
+      );
+    });
+
+    return () => {
+      socket.off("receive_message");
+      socket.off("message_status");
+      socket.off("message_read_receipt");
+      socket.off("user_status");
+    };
+  }, [user, selectedUser]);
+
+  // ✅ Fetch users except logged-in user
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          console.warn("No logged-in user yet");
+          return;
+        }
+
+        const token = await currentUser.getIdToken();
+        const res = await axios.get("http://localhost:5000/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const allUsers = res.data.users || [];
+        const filtered = allUsers.filter(
+          (u) => u?.email && u.email !== currentUser.email
+        );
+
+        setUsers(filtered);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // ✅ Fetch recent messages when chat partner is selected
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedUser || !user) return;
+
+      try {
+        const token = localStorage.getItem("idToken");
+        const conversationId = [user.uid, selectedUser.uid].sort().join("_");
+        const res = await axios.get(
+          `http://localhost:5000/messages/${conversationId}/recent`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setMessages(res.data);
+
+        // Mark as read
+        await axios.put(
+          `http://localhost:5000/messages/${conversationId}/read`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchMessages();
+  }, [selectedUser, user]);
+
+  // ✅ Scroll to bottom on new messages
+  useEffect(() => {
+    chatBodyRef.current?.scrollTo({
+      top: chatBodyRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages]);
+
+  // ✅ Send new message
+  const handleSendMessage = () => {
+    if (!input.trim() || !selectedUser || !socket) return;
+
+    const payload = {
+      text: input,
+      to: selectedUser._id,
+      from: user.uid,
+      conversationId: [user.uid, selectedUser._id].sort().join("_"),
+      createdAt: new Date().toISOString(),
+    };
+
+    socket.emit("send_message", payload);
+    setMessages((prev) => [...prev, payload]);
+    setInput("");
+  };
+
+  const handleLogout = () => {
+    disconnectSocket();
+    console.log("log out");
+    // localStorage.removeItem("token");
+    setUser(null);
+    navigate("/");
+  }
 
   return (
-    <div style={{
-      display: "flex",
-      height: "90vh",
-      fontFamily: "Arial, sans-serif",
-      backgroundColor: "#f8f9fa"
-    }}>
-      {/* Sidebar */}
-      <div style={{
-        width: "300px",
-        borderRight: "1px solid #e0e0e0",
-        padding: "16px",
+    <div
+      style={{
         display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#fff"
-      }}>
-        <div style={{ fontWeight: "bold", fontSize: "18px", marginBottom: "16px" }}>Erik Ten Hag</div>
-        <div style={{ display: "flex", marginBottom: "16px" }}>
-          {["All", "Personal", "Groups"].map(tab => (
-            <div key={tab} style={{
-              flex: 1,
-              textAlign: "center",
-              padding: "8px",
-              borderBottom: selectedUser.name === tab ? "2px solid #007bff" : "2px solid transparent",
-              cursor: "pointer",
-              color: "#333",
-              fontWeight: "bold"
-            }}>
-              {tab}
-            </div>
-          ))}
-        </div>
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {users.map(user => (
-            <div key={user.name} onClick={() => setSelectedUser(user)} style={{
-              display: "flex",
-              flexDirection: "column",
-              padding: "8px",
-              marginBottom: "8px",
-              cursor: "pointer",
-              backgroundColor: selectedUser.name === user.name ? "#e6f7ff" : "transparent",
-              borderRadius: "8px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
-                {user.name}
-                <span style={{ fontSize: "12px", color: "#888" }}>{user.time}</span>
-              </div>
-              <div style={{ fontSize: "14px", color: user.typing ? "green" : "#555" }}>
-                {user.message} {user.unread && <span style={{
-                  backgroundColor: "red",
-                  color: "#fff",
-                  borderRadius: "50%",
-                  padding: "2px 6px",
-                  marginLeft: "8px",
-                  fontSize: "12px"
-                }}>{user.unread}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        height: "90vh",
+        fontFamily: "Arial, sans-serif",
+        backgroundColor: "#f8f9fa",
+      }}
+    >
+      <Sidebar
+        user={user}
+        users={users}
+        selectedUser={selectedUser}
+        handleLogout={handleLogout}
+        error={error}
+      />
 
       {/* Main Chat Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#f0f2f5" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: "#f0f2f5",
+        }}
+      >
         {/* Navbar */}
-        <div style={{
-          width: "100%",
-          padding: "16px",
-          borderBottom: "1px solid #e0e0e0",
-          backgroundColor: "#fff",
-          fontWeight: "bold",
-          fontSize: "18px"
-        }}>
-          {selectedUser.name}
-          {selectedUser.typing && <span style={{ fontSize: "12px", color: "green", marginLeft: "8px" }}>is typing...</span>}
+        <div
+          style={{
+            width: "100%",
+            padding: "16px",
+            borderBottom: "1px solid #e0e0e0",
+            backgroundColor: "#fff",
+            fontWeight: "bold",
+            fontSize: "18px",
+          }}
+        >
+          {selectedUser ? selectedUser.email : "Select a user to chat"}
         </div>
+
         {/* Chat Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
+        <div
+          ref={chatBodyRef}
+          style={{ flex: 1, overflowY: "auto", padding: "16px" }}
+        >
           {messages.map((msg, index) => (
-            <div key={index} style={{
-              display: "flex",
-              justifyContent: msg.sender === "You" ? "flex-end" : "flex-start",
-              marginBottom: "12px"
-            }}>
-              <div style={{
-                backgroundColor: msg.sender === "You" ? "#007bff" : "#fff",
-                color: msg.sender === "You" ? "#fff" : "#000",
-                padding: "12px",
-                borderRadius: "16px",
-                maxWidth: "60%",
-                wordWrap: "break-word",
-                boxShadow: "0px 1px 3px rgba(0,0,0,0.1)"
-              }}>
-                <div style={{ fontSize: "12px", marginBottom: "4px", fontWeight: "bold" }}>{msg.sender}</div>
+            <div
+              key={index}
+              style={{
+                display: "flex",
+                justifyContent:
+                  msg.from === user?.uid ? "flex-end" : "flex-start",
+                marginBottom: "12px",
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor:
+                    msg.from === user?.uid ? "#007bff" : "#fff",
+                  color: msg.from === user?.uid ? "#fff" : "#000",
+                  padding: "12px",
+                  borderRadius: "16px",
+                  maxWidth: "60%",
+                  wordWrap: "break-word",
+                  boxShadow: "0px 1px 3px rgba(0,0,0,0.1)",
+                }}
+              >
                 <div>{msg.text}</div>
-                <div style={{ fontSize: "10px", textAlign: "right", marginTop: "4px", color: "#888" }}>{msg.time}</div>
+                <div
+                  style={{
+                    fontSize: "10px",
+                    textAlign: "right",
+                    marginTop: "4px",
+                    color: "#888",
+                  }}
+                >
+                  {new Date(msg.createdAt).toLocaleTimeString()}
+                  {msg.from === user?.uid && (
+                    <span style={{ marginLeft: "6px" }}>
+                      {msg.read
+                        ? "✔✔" // read
+                        : msg.delivered
+                          ? "✔" // delivered
+                          : "…"}{" "}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
-        {/* Search bar / Send message */}
-        <div style={{
-          padding: "16px",
-          borderTop: "1px solid #e0e0e0",
-          backgroundColor: "#fff",
-          display: "flex"
-        }}>
-          <input
-            type="text"
+
+        {/* Send message */}
+        {selectedUser && (
+          <div
             style={{
-              flex: 1,
-              padding: "12px",
-              borderRadius: "24px",
-              border: "1px solid #ccc",
-              fontSize: "16px",
-              outline: "none",
-              marginRight: "8px"
+              padding: "16px",
+              borderTop: "1px solid #e0e0e0",
+              backgroundColor: "#fff",
+              display: "flex",
             }}
-            placeholder="Type a message..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-          />
-          <button style={{
-            padding: "12px 24px",
-            borderRadius: "24px",
-            border: "none",
-            backgroundColor: "#007bff",
-            color: "#fff",
-            fontWeight: "bold",
-            cursor: "pointer"
-          }}>
-            Send
-          </button>
-        </div>
+          >
+            <input
+              type="text"
+              style={{
+                flex: 1,
+                padding: "12px",
+                borderRadius: "24px",
+                border: "1px solid #ccc",
+                fontSize: "16px",
+                outline: "none",
+                marginRight: "8px",
+              }}
+              placeholder="Type a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
+            <button
+              onClick={handleSendMessage}
+              style={{
+                padding: "12px 24px",
+                borderRadius: "24px",
+                border: "none",
+                backgroundColor: "#007bff",
+                color: "#fff",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              Send
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default ChatApp;
+
+
+
+
+
+
+
+
+
+
+
+

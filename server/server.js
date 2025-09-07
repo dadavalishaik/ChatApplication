@@ -8,9 +8,10 @@ const connectDB = require("./config/db"); // your existing db connection
 const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const { initKafkaProducer } = require("./config/Kafka");
-const { initRedis, redisClient } = require("./config/redisClient");
+const { initRedis } = require("./config/redisClient");
 const { socketHandler } = require("./socket/handlers");
 const { startMessageConsumer } = require("./consumers/messageConsumer");
+
 
 connectDB();
 
@@ -44,7 +45,10 @@ startMessageConsumer(io).catch((err) => {
   console.error("Message consumer failed:", err);
 });
 
+
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+// server.js
+initRedis().then(() => {
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}).catch(err => console.error("Redis init failed", err));
+

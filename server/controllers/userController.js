@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const admin = require("../config/firebase");
+const { getSocketIdForUser } = require("../config/redisClient");
 const db = admin.firestore();
 
 const registerUser = async (req, res) => {
@@ -80,8 +81,66 @@ const loginUser = async (req, res) => {
     }
 };
 
+//for getting logged-in user
+const getLoggedinUser = async (req, res) => {
 
-module.exports = { registerUser, loginUser };
+    try {
+        // get uid from decoded firebase token
+        const firebaseUid = req.user.uid;
+
+        // find user in MongoDB
+        const mongoUser = await User.findOne({ firebaseUid });
+        if (!mongoUser) {
+            return res.status(404).json({ message: "User not found in MongoDB" });
+        }
+
+        res.status(200).json({
+            message: "Current user fetched successfully",
+            firebaseUser: req.user, // uid, email, etc
+            mongoUser,
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to fetch current user",
+            error: error.message,
+        });
+    }
+
+}
+
+//get all users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find();
+
+        // get all online users from Redis
+        const onlineUsers = [];
+        for (const u of users) {
+            const socketId = await getSocketIdForUser(u._id.toString());
+            if (socketId) onlineUsers.push(u._id.toString());
+        }
+
+        // map users with online status
+        const usersWithStatus = users.map(u => ({
+            ...u.toObject(),
+            online: onlineUsers.includes(u._id.toString()),
+        }));
+
+        res.status(200).json({
+            message: "Users fetched successfully",
+            users: usersWithStatus,
+        });
+    } catch (error) {
+        console.error("❌ Error in getAllUsers:", error.message);
+        res.status(500).json({
+            message: "Failed to fetch users",
+            error: error.message,
+        });
+    }
+};
+
+
+module.exports = { registerUser, loginUser, getLoggedinUser, getAllUsers };
 
 
 

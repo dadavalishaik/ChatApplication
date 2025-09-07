@@ -1,7 +1,7 @@
 // consumers/messageConsumer.js
 const { Kafka } = require("kafkajs");
 const Message = require("../models/messageModel");
-const { redisClient, cacheRecentMessage, getSocketIdForUser } = require("../config/redisClient");
+const { cacheRecentMessage, getSocketIdForUser } = require("../config/redisClient");
 
 async function startMessageConsumer(io) {
   const kafka = new Kafka({
@@ -32,18 +32,24 @@ async function startMessageConsumer(io) {
         // cache in Redis
         await cacheRecentMessage(saved.conversationId, saved);
 
-        // If recipient is online (in redis), emit to their socket room
+        // ----- REAL-TIME DELIVERY -----
         const recipientSocketId = await getSocketIdForUser(saved.to);
         if (recipientSocketId) {
-          // emit to a specific socket id if available:
-          io.to(saved.to).emit("new_message", saved);
+          io.to(recipientSocketId).emit("new_message", saved);
+          console.log(`Delivered via Socket.IO to: ${saved.to}`);
         } else {
-          // recipient offline: you could push notification, mark as undelivered, etc.
-          console.log("Recipient offline:", saved.to);
+          console.log(`Recipient offline: ${saved.to}`);
         }
 
-        // optionally emit delivered ack to sender
-        io.to(saved.from).emit("message_delivered", { messageId: saved._id, conversationId: saved.conversationId });
+        // ----- DELIVERED ACK TO SENDER -----
+        const senderSocketId = await getSocketIdForUser(saved.from);
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("message_delivered", {
+            messageId: saved._id,
+            conversationId: saved.conversationId,
+          });
+        }
+
       } catch (err) {
         console.error("Error in eachMessage:", err);
       }
@@ -54,3 +60,12 @@ async function startMessageConsumer(io) {
 }
 
 module.exports = { startMessageConsumer };
+
+
+
+
+
+
+
+
+
