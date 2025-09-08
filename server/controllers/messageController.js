@@ -19,7 +19,7 @@ const sendMessage = async (req, res) => {
       return res.status(400).json({ message: "Recipient user not found in DB" });
     }
 
-    const conversationId = [from,to].sort().join("_");
+    const conversationId = [from, to].sort().join("_");
 
     const msgObj = {
       conversationId,
@@ -27,6 +27,7 @@ const sendMessage = async (req, res) => {
       to,
       text,
       createdAt: new Date(),
+
     };
 
     // Publish to Kafka
@@ -40,72 +41,135 @@ const sendMessage = async (req, res) => {
 
 
 // get recent messages
+// const getRecentMessages = async (req, res) => {
+//   try {
+//     const { conversationId } = req.params;
+//     const userId = req.user.uid;
+
+
+//     const messages = await Message.find({ conversationId })
+//       .sort({ createdAt: -1 })
+//       .limit(50);
+
+//     res.json(messages.reverse());
+//   } catch (err) {
+//     console.error("Error in getRecentMessages:", err);
+//     res.status(500).json({ message: "Failed to fetch messages", error: err.message });
+//   }
+// };
+
+
+
 const getRecentMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const userId = req.user.uid;
+    const userId = req.user?.uid; // safer optional chaining
 
-    // check if user is participant
-    // if (!conversationId.includes(userId)) {
-    //   return res.status(403).json({ message: "Not authorized to view this conversation" });
-    // }
+    if (!userId) {
+      console.error("userId is undefined");
+      return res.status(400).json({ message: "User not authenticated" });
+    }
 
     const messages = await Message.find({ conversationId })
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.json(messages.reverse());
+    res.status(200).json(messages.reverse());
   } catch (err) {
     console.error("Error in getRecentMessages:", err);
     res.status(500).json({ message: "Failed to fetch messages", error: err.message });
   }
 };
 
+
 //reading message
+// const readMessages = async (req, res) => {
+//   try {
+//     try {
+//       const { conversationId } = req.params;
+//       const userId = req.user.uid; // from Firebase token
+
+//       // Update only messages TO the current user
+//       const result = await Message.updateMany(
+//         { conversationId, to: userId, read: false },
+//         { $set: { read: true } }
+//       );
+
+//       res.json({ success: true, message: "Messages marked as read" });
+//     } catch (err) {
+//       res.status(500).json({ message: "Failed to mark as read", error: err.message });
+//     }
+//   } catch (error) {
+
+//   }
+// }
+
+
 const readMessages = async (req, res) => {
   try {
-    try {
-      const { conversationId } = req.params;
-      const userId = req.user.uid; // from Firebase token
+    const { conversationId } = req.params;
+    const userId = req.user ? req.user.uid : null;
 
-      // Update only messages TO the current user
-      const result = await Message.updateMany(
-        { conversationId, to: userId, read: false },
-        { $set: { read: true } }
-      );
+    console.log("Read Messages Request:", { conversationId, userId });
 
-      res.json({ success: true, message: "Messages marked as read" });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to mark as read", error: err.message });
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
     }
-  } catch (error) {
 
+    // Update only messages TO the current user
+    const result = await Message.updateMany(
+      { conversationId, to: userId, read: false },
+      { $set: { read: true } }
+    );
+
+    console.log("Update Result:", result);
+
+    res.json({ success: true, message: "Messages marked as read" });
+  } catch (err) {
+    console.error("Error in readMessages:", err);
+    res.status(500).json({ message: "Failed to mark as read", error: err.message });
   }
-}
+};
 
-//unread messages
+
+
+
+
+// Get unread messages count
 const unreadMessages = async (req, res) => {
-
   try {
     const userId = req.user.uid;
 
+    // Aggregate unread messages per conversation
     const unread = await Message.aggregate([
       { $match: { to: userId, read: false } },
       {
         $group: {
           _id: "$conversationId",
           count: { $sum: 1 },
-          latestMessage: { $last: "$$ROOT" },
+          latestMessage: { $last: "$$ROOT" }, // optional: latest unread message
         },
       },
-    ])
+    ]);
 
-    res.json({ success: true, unread });
+    // Calculate total unread messages across all conversations
+    const totalUnread = unread.reduce((acc, convo) => acc + convo.count, 0);
 
+    res.json({
+      success: true,
+      totalUnread,       // total unread messages
+      perConversation: unread, // unread count per conversation
+    });
   } catch (error) {
-
+    console.error("Error fetching unread messages:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch unread messages",
+      error: error.message
+    });
   }
-}
+};
+
 
 
 //for delivery of messages

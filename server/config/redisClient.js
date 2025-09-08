@@ -13,6 +13,7 @@ async function initRedis() {
 }
 
 
+
 // helper: mark user online/offline & store socketId -> uid
 async function setUserOnline(uid, socketId) {
   if (!redisClient) await initRedis(); // ensure client exists

@@ -5,23 +5,26 @@ const db = admin.firestore();
 
 const registerUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, username, password } = req.body;
 
         // creating Firebase Auth user
         const userRecord = await admin.auth().createUser({
             email,
-            password,
+            username,
+            password
         });
 
         //db connection
         await db.collection("users").doc(userRecord.uid).set({
             email,
+            username,
             createdAt: new Date(),
         });
 
         const newUser = new User({
             firebaseUid: userRecord.uid,
             email,
+            username,
         });
 
         await newUser.save();
@@ -87,7 +90,7 @@ const getLoggedinUser = async (req, res) => {
     try {
         // get uid from decoded firebase token
         const firebaseUid = req.user.uid;
-
+       
         // find user in MongoDB
         const mongoUser = await User.findOne({ firebaseUid });
         if (!mongoUser) {
@@ -97,6 +100,7 @@ const getLoggedinUser = async (req, res) => {
         res.status(200).json({
             message: "Current user fetched successfully",
             firebaseUser: req.user, // uid, email, etc
+            username:req.username,
             mongoUser,
         });
     } catch (error) {

@@ -7,6 +7,7 @@ const Register = () => {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [username, setUsername] = useState("");
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -16,18 +17,33 @@ const Register = () => {
         try {
             const response = await axios.post("http://localhost:5000/register", {
                 email,
+                username,
                 password,
 
             });
 
             setMessage("Registration successful!");
             console.log(response.data);
+
+
         } catch (error) {
             setMessage(error.response?.data?.message || "Registration failed");
             console.error(error.response?.data || error.message);
         } finally {
             setLoading(false);
+            setEmail("");
+            setUsername("");
+            setPassword("");
         }
+        // ✅ Clear the form fields after submission
+
+    };
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
     };
 
 
@@ -145,6 +161,29 @@ const Register = () => {
                             placeholder="Enter your email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            required
+                            style={{
+                                width: "90%",
+                                padding: "12px",
+                                borderRadius: "10px",
+                                border: "1px solid #ccc",
+                                fontSize: "14px",
+                                outline: "none",
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ textAlign: "left", marginBottom: "15px" }}>
+                        <label
+                            style={{ fontSize: "13px", fontFamily: "sans-serif", fontWeight: "bold", color: "#444", display: "block", marginBottom: "6px" }}
+                        >
+                            Username
+                        </label>
+                        <input
+                            type="username"
+                            placeholder="Enter your username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
                             required
                             style={{
                                 width: "90%",

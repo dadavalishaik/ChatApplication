@@ -24,9 +24,8 @@ export const connectSocket = (idToken) => {
     socket.on("unauthorized", () => console.warn("Socket unauthorized"));
 };
 
-export const disconnectSocket =()=>
-{
-    if(socket.connected){
+export const disconnectSocket = () => {
+    if (socket.connected) {
         socket.disconnect();
         console.log("socket disconnected manually");
     }

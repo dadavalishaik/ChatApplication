@@ -96,7 +96,25 @@ function socketHandler(io, socket) {
   });
 
   //for read messages
-  socket.on("read_message", async ({ conversationId, messageId }) => {
+  // socket.on("read_message", async ({ conversationId, messageId }) => {
+  //   try {
+  //     await produceMessage("read_updates", {
+  //       conversationId,
+  //       messageId,
+  //       readBy: socket.uid,
+  //       readAt: new Date()
+  //     })
+  //     const senderSocket = await getSocketIdForUser(payload.from);
+  //     if (senderSocket) {
+  //       io.to(senderSocket).emit("message read", { messageId, conversationId });
+  //     }
+  //   } catch (err) {
+  //     console.error("read_message error:", err);
+  //   }
+  // })
+
+
+  socket.on("read_message", async ({ conversationId, messageId, from }) => {
     try {
       await produceMessage("read_updates", {
         conversationId,
@@ -104,14 +122,18 @@ function socketHandler(io, socket) {
         readBy: socket.uid,
         readAt: new Date()
       })
-      const senderSocket = await getSocketIdForUser(payload.from);
-      if (senderSocket) {
-        io.to(senderSocket).emit("message read", { messageId, conversationId });
+      const message = await message.findById(messageId);
+      if (message && message.from) {
+        const senderSocket = await getSocketIdForUser(message.from);
+        if (senderSocket) {
+          io.to(senderSocket).emit("message read", { messageId, conversationId });
+        }
       }
     } catch (err) {
       console.error("read_message error:", err);
     }
   })
+
 
   socket.on("disconnect", async () => {
     const uid = socket.uid;
@@ -123,6 +145,9 @@ function socketHandler(io, socket) {
       io.emit("user_status", { uid, online: false });
     }
   });
+
+  
+
 }
 
 module.exports = { socketHandler };

@@ -14,6 +14,7 @@ const ChatApp = () => {
   const [users, setUsers] = useState([]);
   const chatBodyRef = useRef(null);
   const navigate = useNavigate();
+  const [messagesMap, setMessagesMap] = useState({});
 
   // ✅ Get logged-in user
   useEffect(() => {
@@ -39,6 +40,16 @@ const ChatApp = () => {
     fetchUser();
   }, []);
 
+  const getConversationId = (uid1, uid2) => {
+    return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+  };
+
+  //helper function
+   const getUserId = (userObj) => {
+    return userObj?.uid || userObj?._id || userObj?.id;
+  };
+
+  
   // ✅ Connect socket after user is set
   useEffect(() => {
     if (!user) return;
@@ -55,24 +66,28 @@ const ChatApp = () => {
 
     // receive new messages
     socket.on("receive_message", (msg) => {
-      const conversationId = [user.uid, msg.from === user.uid ? msg.to : msg.from]
-        .sort()
-        .join("_");
+      const currentUserId = getUserId(user);
+      const otherUserId = msg.from === currentUserId ? msg.to : msg.from;
+      const conversationId = getConversationId(currentUserId, otherUserId);
 
-      if (
-        selectedUser &&
-        conversationId === [user.uid, selectedUser.uid].sort().join("_")
-      ) {
-        setMessages((prev) => [...prev, msg]);
+      setMessagesMap(prev => {
+        const convMsgs = prev[conversationId] || [];
+        return { ...prev, [conversationId]: [...convMsgs, msg] };
+      });
 
-        // mark as read
-        axios
-          .put(
-            `http://localhost:5000/messages/${conversationId}/read`,
-            {},
-            { headers: { Authorization: `Bearer ${localStorage.getItem("idToken")}` } }
-          )
-          .catch(console.error);
+      // Update chat view if conversation is open
+      if (selectedUser) {
+        const selectedUserId = getUserId(selectedUser);
+        const currentConvId = getConversationId(currentUserId, selectedUserId);
+        
+        if (conversationId === currentConvId) {
+          setMessages(prev => [...prev, msg]);
+
+          // mark as read
+          axios.put(`http://localhost:5000/messages/${conversationId}/read`, {}, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("idToken")}` }
+          }).catch(console.error);
+        }
       }
     });
 
@@ -99,7 +114,7 @@ const ChatApp = () => {
     // user online/offline status
     socket.on("user_status", ({ uid, online }) => {
       setUsers((prev) =>
-        prev.map((u) => (u._id === uid ? { ...u, online } : u))
+        prev.map((u) => (getUserId(u) === uid ? { ...u, online } : u))
       );
     });
 
@@ -110,6 +125,8 @@ const ChatApp = () => {
       socket.off("user_status");
     };
   }, [user, selectedUser]);
+
+
 
   // ✅ Fetch users except logged-in user
   useEffect(() => {
@@ -142,31 +159,53 @@ const ChatApp = () => {
 
   // ✅ Fetch recent messages when chat partner is selected
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!selectedUser || !user) return;
+    if (!selectedUser || !user) return;
 
-      try {
-        const token = localStorage.getItem("idToken");
-        const conversationId = [user.uid, selectedUser.uid].sort().join("_");
-        const res = await axios.get(
-          `http://localhost:5000/messages/${conversationId}/recent`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMessages(res.data);
 
-        // Mark as read
-        await axios.put(
-          `http://localhost:5000/messages/${conversationId}/read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    };
+    // Use uid for consistency, fall back to _id if uid doesn't exist
+    const selectedUserId = selectedUser.uid || selectedUser._id;
 
-    fetchMessages();
-  }, [selectedUser, user]);
+    // Temporary conversation ID
+    const tempConvid = getConversationId(user.uid, selectedUserId);
+    console.log("tempConvid:", tempConvid);
+    console.log("user.uid:", user.uid);
+    console.log("selectedUserId:", selectedUserId);
+
+
+    // Load messages from map if exist
+    if (messagesMap[tempConvid]) {
+      setMessages(messagesMap[tempConvid]);
+    } else {
+      const fetchMessages = async () => {
+        try {
+          const token = localStorage.getItem("idToken");
+
+          // Only fetch if conversation exists in DB
+          const res = await axios.get(
+            `http://localhost:5000/messages/${tempConvid}/recent`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          setMessages(res.data);
+
+          // Save to map
+          setMessagesMap(prev => ({ ...prev, [tempConvid]: res.data }));
+
+          // mark as read
+          await axios.put(
+            `http://localhost:5000/messages/${tempConvid}/read`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      fetchMessages();
+    }
+  }, [selectedUser, user, messagesMap]);
+
 
   // ✅ Scroll to bottom on new messages
   useEffect(() => {
@@ -180,23 +219,37 @@ const ChatApp = () => {
   const handleSendMessage = () => {
     if (!input.trim() || !selectedUser || !socket) return;
 
+    // Use uid for consistency, fall back to _id if uid doesn't exist
+    const selectedUserId = selectedUser.uid || selectedUser._id;
+    // Temporary conversation ID
+    const tempConvid = getConversationId(user.uid, selectedUserId);
+
+    // Payload to send
     const payload = {
       text: input,
-      to: selectedUser._id,
+      to: selectedUserId,
       from: user.uid,
-      conversationId: [user.uid, selectedUser._id].sort().join("_"),
+      conversationId: tempConvid,
       createdAt: new Date().toISOString(),
     };
 
+    // Emit via socket
     socket.emit("send_message", payload);
+
+    // Update frontend UI immediately
     setMessages((prev) => [...prev, payload]);
-    setInput("");
+    setMessagesMap((prev) => {
+      const convMsgs = prev[tempConvid] || [];
+      return { ...prev, [tempConvid]: [...convMsgs, payload] };
+    });
+
+    setInput(""); // clear input
   };
 
   const handleLogout = () => {
     disconnectSocket();
     console.log("log out");
-    // localStorage.removeItem("token");
+    localStorage.removeItem("token");
     setUser(null);
     navigate("/");
   }
@@ -214,7 +267,9 @@ const ChatApp = () => {
         user={user}
         users={users}
         selectedUser={selectedUser}
+        setUsers={setUsers}
         handleLogout={handleLogout}
+        setSelectedUser={setSelectedUser}
         error={error}
       />
 
@@ -230,15 +285,43 @@ const ChatApp = () => {
         {/* Navbar */}
         <div
           style={{
-            width: "100%",
+            width: "98%",
             padding: "16px",
             borderBottom: "1px solid #e0e0e0",
             backgroundColor: "#fff",
+            display: "flex",
+            alignItems: "center",
             fontWeight: "bold",
             fontSize: "18px",
           }}
         >
-          {selectedUser ? selectedUser.email : "Select a user to chat"}
+          {selectedUser ? (
+            <>
+              {/* Profile circle */}
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "#007bff",
+                  color: "#fff",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  marginRight: "12px",
+                }}
+              >
+                {selectedUser.username ? selectedUser.username.charAt(0).toUpperCase() : "?"}
+              </div>
+
+              {/* Username */}
+              <span>{selectedUser.username}</span>
+            </>
+          ) : (
+            <span>Select a user to chat</span>
+          )}
         </div>
 
         {/* Chat Body */}
@@ -340,8 +423,6 @@ const ChatApp = () => {
 };
 
 export default ChatApp;
-
-
 
 
 
