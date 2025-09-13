@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { FaGoogle, FaApple, FaFacebookF } from "react-icons/fa";
 import axios from "axios";
+import chatImg from "../assets/chat.png"
+import google from "../assets/google.png"
+import instagram from "../assets/instagram.png"
+import facebook from "../assets/facebook.png"
 
 const Register = () => {
     const [email, setEmail] = useState("");
@@ -64,21 +68,21 @@ const Register = () => {
                     background: "#fff",
                     padding: "30px",
                     borderRadius: "20px",
-                    boxShadow: "0px 6px 20px rgba(0, 0, 0, 0.08)",
+                    boxShadow: "0px 10px 30px rgba(142, 45, 226, 0.2)",
                     width: "100%",
                     maxWidth: "380px",
                     textAlign: "center",
                 }}
             >
                 {/* --------Logo ----------*/}
-                <div style={{ fontSize: "40px", marginBottom: "15px" }}>🌐</div>
+                <img src={chatImg} alt="chat icon" style={{ width: "90px", height: "90px" }} />
 
                 {/*------- Title -----------*/}
-                <h2 style={{ fontSize: "22px", fontWeight: "bold", color: "#222", marginBottom: "6px" }}>
-                    Welcome back
+                <h2 style={{ fontFamily: 'Lato,sans-serif', fontSize: "22px", fontWeight: "bold", color: "#222", marginBottom: "6px" }}>
+                    Sign in here
                 </h2>
-                <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>
-                    Please enter your details to sign in
+                <p style={{ fontFamily: 'Lato,sans-serif', fontSize: "14px", color: "#666", marginBottom: "20px" }}>
+                    Please enter your details to Register
                 </p>
 
                 {/* --------Social buttons -------*/}
@@ -99,10 +103,14 @@ const Register = () => {
                             padding: "12px",
                             fontSize: "18px",
                             cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
                         }}
                     >
-                        <FaGoogle />
+                        <img src={google} alt="Google" style={{ width: "20px", height: "20px" }} />
                     </button>
+
                     <button
                         style={{
                             flex: 1,
@@ -112,10 +120,14 @@ const Register = () => {
                             padding: "12px",
                             fontSize: "18px",
                             cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
                         }}
                     >
-                        <FaApple />
+                        <img src={instagram} alt="instagram" style={{ width: "20px", height: "20px" }} />
                     </button>
+
                     <button
                         style={{
                             flex: 1,
@@ -125,11 +137,15 @@ const Register = () => {
                             padding: "12px",
                             fontSize: "18px",
                             cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
                         }}
                     >
-                        <FaFacebookF />
+                        <img src={facebook} alt="instagram" style={{ width: "20px", height: "20px" }} />
                     </button>
                 </div>
+
 
                 {/* -------Divider---------- */}
                 <div
@@ -143,18 +159,28 @@ const Register = () => {
                     }}
                 >
                     <hr style={{ flex: 1, border: "none", borderBottom: "1px solid #e2e2e2" }} />
-                    <span style={{ margin: "0 10px" }}>or</span>
+                    <span style={{ margin: "0 10px", fontFamily: 'Lato,sans-serif' }}>or</span>
                     <hr style={{ flex: 1, border: "none", borderBottom: "1px solid #e2e2e2" }} />
                 </div>
 
                 {/* --------Form ----------*/}
                 <form onSubmit={handleSubmit}>
                     {/* -------Email--------- */}
-                    <div style={{ textAlign: "left", marginBottom: "15px" }}>
+                    <div style={{ position: "relative", width: "90%", marginBottom: "20px", marginLeft: "15px" }}>
                         <label
-                            style={{ fontSize: "13px", fontFamily: "sans-serif", fontWeight: "bold", color: "#444", display: "block", marginBottom: "6px" }}
+                            style={{
+                                position: "absolute",
+                                top: "-8px",
+                                left: "12px",
+                                background: "#fff",
+                                padding: "0 4px",
+                                fontFamily: 'Lato,sans-serif',
+                                fontSize: "13px",
+                                fontWeight: "bold",
+                                color: "#444",
+                            }}
                         >
-                            Email address
+                            Email
                         </label>
                         <input
                             type="email"
@@ -168,14 +194,25 @@ const Register = () => {
                                 borderRadius: "10px",
                                 border: "1px solid #ccc",
                                 fontSize: "14px",
+                                fontFamily: 'Lato,sans-serif',
                                 outline: "none",
                             }}
                         />
                     </div>
 
-                    <div style={{ textAlign: "left", marginBottom: "15px" }}>
+                    <div style={{ position: "relative", width: "90%", marginBottom: "20px", marginLeft: "15px" }}>
                         <label
-                            style={{ fontSize: "13px", fontFamily: "sans-serif", fontWeight: "bold", color: "#444", display: "block", marginBottom: "6px" }}
+                            style={{
+                                position: "absolute",
+                                top: "-8px",
+                                left: "12px",
+                                background: "#fff",
+                                padding: "0 4px",
+                                fontFamily: 'Lato,sans-serif',
+                                fontSize: "13px",
+                                fontWeight: "bold",
+                                color: "#444",
+                            }}
                         >
                             Username
                         </label>
@@ -187,19 +224,30 @@ const Register = () => {
                             required
                             style={{
                                 width: "90%",
-                                padding: "12px",
+                                padding: "16px 12px 12px 12px",
                                 borderRadius: "10px",
                                 border: "1px solid #ccc",
                                 fontSize: "14px",
                                 outline: "none",
+                                fontFamily: 'Lato,sans-serif'
                             }}
                         />
                     </div>
 
                     {/*--------- Password------- */}
-                    <div style={{ textAlign: "left", marginBottom: "15px", position: "relative" }}>
+                    <div style={{ position: "relative", width: "90%", marginBottom: "20px", marginLeft: "15px" }}>
                         <label
-                            style={{ fontSize: "13px", fontWeight: "bold", fontFamily: "sans-serif", color: "#444", display: "block", marginBottom: "6px" }}
+                            style={{
+                                position: "absolute",
+                                top: "-8px",
+                                left: "12px",
+                                background: "#fff",
+                                padding: "0 4px",
+                                fontFamily: 'Lato,sans-serif',
+                                fontSize: "13px",
+                                fontWeight: "bold",
+                                color: "#444",
+                            }}
                         >
                             Password
                         </label>
@@ -208,14 +256,14 @@ const Register = () => {
                             placeholder="Enter your password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
                             style={{
                                 width: "90%",
-                                padding: "12px",
+                                padding: "16px 12px 12px 12px",
                                 borderRadius: "10px",
                                 border: "1px solid #ccc",
                                 fontSize: "14px",
                                 outline: "none",
+                                fontFamily: 'Lato,sans-serif'
                             }}
                         />
 
@@ -226,13 +274,14 @@ const Register = () => {
                         type="submit"
                         style={{
                             width: "50%",
-                            padding: "14px",
-                            background: "linear-gradient(to right, #7b5fff, #6c63ff)",
+                            padding: "12px",
+                            background: "linear-gradient(to right, #ff6ec4, #5b8def, #8e2de2)",
                             color: "#fff",
-                            fontSize: "15px",
+                            fontSize: "20px",
                             fontWeight: "bold",
                             border: "none",
                             borderRadius: "10px",
+                            fontFamily: 'Lato,sans-serif',
                             cursor: "pointer",
                         }}
                     >

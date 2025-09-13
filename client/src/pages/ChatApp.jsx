@@ -4,6 +4,8 @@ import { auth } from "../components/firebase";
 import { socket, connectSocket, disconnectSocket } from "../components/socket";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import paperplane from "../assets/paperplane.png"
+import Navbar from "../components/Navbar";
 
 const ChatApp = () => {
   const [user, setUser] = useState(null); // logged-in user
@@ -45,11 +47,11 @@ const ChatApp = () => {
   };
 
   //helper function
-   const getUserId = (userObj) => {
+  const getUserId = (userObj) => {
     return userObj?.uid || userObj?._id || userObj?.id;
   };
 
-  
+
   // ✅ Connect socket after user is set
   useEffect(() => {
     if (!user) return;
@@ -79,7 +81,7 @@ const ChatApp = () => {
       if (selectedUser) {
         const selectedUserId = getUserId(selectedUser);
         const currentConvId = getConversationId(currentUserId, selectedUserId);
-        
+
         if (conversationId === currentConvId) {
           setMessages(prev => [...prev, msg]);
 
@@ -127,7 +129,6 @@ const ChatApp = () => {
   }, [user, selectedUser]);
 
 
-
   // ✅ Fetch users except logged-in user
   useEffect(() => {
     const fetchUsers = async () => {
@@ -160,7 +161,6 @@ const ChatApp = () => {
   // ✅ Fetch recent messages when chat partner is selected
   useEffect(() => {
     if (!selectedUser || !user) return;
-
 
     // Use uid for consistency, fall back to _id if uid doesn't exist
     const selectedUserId = selectedUser.uid || selectedUser._id;
@@ -258,7 +258,7 @@ const ChatApp = () => {
     <div
       style={{
         display: "flex",
-        height: "90vh",
+        height: "96vh",
         fontFamily: "Arial, sans-serif",
         backgroundColor: "#f8f9fa",
       }}
@@ -279,50 +279,11 @@ const ChatApp = () => {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          backgroundColor: "#f0f2f5",
+          background: "linear-gradient(135deg, #f3e8ff, #ffe6f0)"
         }}
       >
         {/* Navbar */}
-        <div
-          style={{
-            width: "98%",
-            padding: "16px",
-            borderBottom: "1px solid #e0e0e0",
-            backgroundColor: "#fff",
-            display: "flex",
-            alignItems: "center",
-            fontWeight: "bold",
-            fontSize: "18px",
-          }}
-        >
-          {selectedUser ? (
-            <>
-              {/* Profile circle */}
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  backgroundColor: "#007bff",
-                  color: "#fff",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  marginRight: "12px",
-                }}
-              >
-                {selectedUser.username ? selectedUser.username.charAt(0).toUpperCase() : "?"}
-              </div>
-
-              {/* Username */}
-              <span>{selectedUser.username}</span>
-            </>
-          ) : (
-            <span>Select a user to chat</span>
-          )}
-        </div>
+        <Navbar selectedUser={selectedUser} />
 
         {/* Chat Body */}
         <div
@@ -357,10 +318,10 @@ const ChatApp = () => {
                     fontSize: "10px",
                     textAlign: "right",
                     marginTop: "4px",
-                    color: "#888",
+                    color: "#fff",
                   }}
                 >
-                  {new Date(msg.createdAt).toLocaleTimeString()}
+                  {/* {new Date(msg.createdAt).toLocaleTimeString()}
                   {msg.from === user?.uid && (
                     <span style={{ marginLeft: "6px" }}>
                       {msg.read
@@ -369,7 +330,7 @@ const ChatApp = () => {
                           ? "✔" // delivered
                           : "…"}{" "}
                     </span>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>
@@ -394,6 +355,7 @@ const ChatApp = () => {
                 borderRadius: "24px",
                 border: "1px solid #ccc",
                 fontSize: "16px",
+                fontFamily: 'Lato,sans-serif',
                 outline: "none",
                 marginRight: "8px",
               }}
@@ -407,13 +369,12 @@ const ChatApp = () => {
                 padding: "12px 24px",
                 borderRadius: "24px",
                 border: "none",
-                backgroundColor: "#007bff",
                 color: "#fff",
                 fontWeight: "bold",
                 cursor: "pointer",
               }}
             >
-              Send
+              <img src={paperplane} alt="send" style={{ height: "30px" }} />
             </button>
           </div>
         )}

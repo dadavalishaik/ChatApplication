@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../components/firebase"
 import { connectSocket } from "../components/socket";
+import chatImg from "../assets/chat.png"
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -75,67 +76,81 @@ const Login = () => {
           background: "#fff",
           padding: "30px",
           borderRadius: "20px",
-          boxShadow: "0px 6px 20px rgba(0, 0, 0, 0.08)",
+          boxShadow: "0px 10px 30px rgba(142, 45, 226, 0.2)",
           width: "100%",
           maxWidth: "380px",
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: "40px", marginBottom: "15px" }}>🌐</div>
+        <img src={chatImg} alt="chat icon" style={{ width: "90px", height: "90px" }} />
         <h2
           style={{
             fontSize: "22px",
-            fontWeight: "bold",
-            fontFamily: "sans-serif",
+            fontFamily: 'Lato,sans-serif',
             color: "#222",
-            marginBottom: "6px",
+            marginBottom: "12px",
           }}
         >
-          Welcome back
+          WELCOME
         </h2>
 
         <form onSubmit={handleLogin}>
           {/* Email */}
           <div style={{ textAlign: "left", marginBottom: "15px" }}>
-            <label
-              style={{
-                fontFamily: "sans-serif",
-                fontSize: "13px",
-                fontWeight: "bold",
-                color: "#444",
-                display: "block",
-                marginBottom: "6px",
-              }}
-            >
-              Email address
-            </label>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "90%",
-                padding: "12px",
-                borderRadius: "10px",
-                border: "1px solid #ccc",
-                fontSize: "14px",
-                outline: "none",
-              }}
-            />
+            <div style={{ position: "relative", width: "90%", marginBottom: "20px" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top: "-8px",
+                  left: "12px",
+                  background: "#fff",
+                  padding: "0 2px",
+                  fontFamily: 'Lato,sans-serif',
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  color: "#444",
+                }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "16px 12px 12px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #ccc",
+                  fontSize: "14px",
+                  outline: "none",
+                  fontFamily: 'Lato,sans-serif'
+                }}
+              />
+              {errors.email && (
+                <span style={{ color: "red", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                  {errors.email}
+                </span>
+              )}
+            </div>
+
             {errors.email && <span style={{ color: "red", fontSize: "12px" }}>{errors.email}</span>}
           </div>
 
           {/* Password */}
-          <div style={{ textAlign: "left", marginBottom: "15px" }}>
+          <div style={{ position: "relative", textAlign: "left", marginBottom: "15px" }}>
             <label
               style={{
+                position: "absolute",
+                top: "-8px",
+                left: "12px",
+                background: "#fff",
+                padding: "0 4px",
+                fontFamily: 'Lato,sans-serif',
                 fontSize: "13px",
                 fontWeight: "bold",
-                fontFamily: "sans-serif",
                 color: "#444",
-                display: "block",
-                marginBottom: "6px",
               }}
             >
               Password
@@ -147,11 +162,12 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               style={{
                 width: "90%",
-                padding: "12px",
+                padding: "16px 12px 12px 12px",
                 borderRadius: "10px",
                 border: "1px solid #ccc",
                 fontSize: "14px",
                 outline: "none",
+                fontFamily: 'Lato,sans-serif'
               }}
             />
             {errors.password && <span style={{ color: "red", fontSize: "12px" }}>{errors.password}</span>}
@@ -166,7 +182,7 @@ const Login = () => {
             }}
           >
             <input type="checkbox" id="remember" />
-            <label htmlFor="remember" style={{ fontSize: "13px", color: "#555" }}>
+            <label htmlFor="remember" style={{ fontSize: "13px", color: "#555", fontFamily: 'Lato,sans-serif', }}>
               Remember for 30 days
             </label>
           </div>
@@ -174,14 +190,15 @@ const Login = () => {
           <button
             type="submit"
             style={{
-              width: "100%",
-              padding: "14px",
-              background: "linear-gradient(to right, #7b5fff, #6c63ff)",
+              width: "50%",
+              padding: "12px",
+              background: "linear-gradient(to right, #ff6ec4, #5b8def, #8e2de2)",
               color: "#fff",
-              fontSize: "15px",
+              fontSize: "20px",
               fontWeight: "bold",
               border: "none",
               borderRadius: "10px",
+              fontFamily: 'Lato,sans-serif',
               cursor: "pointer",
             }}
           >
@@ -189,9 +206,9 @@ const Login = () => {
           </button>
         </form>
 
-        <p style={{ marginTop: "18px", fontSize: "13px", color: "#444" }}>
+        <p style={{ marginTop: "18px", fontSize: "13px", color: "#444", fontFamily: 'Lato,sans-serif', }}>
           Don’t have an account?{" "}
-          <a href="/register" style={{ color: "#6c63ff", textDecoration: "none", fontWeight: "500" }}>
+          <a href="/register" style={{ fontFamily: 'Lato,sans-serif', color: "#6c63ff", textDecoration: "none", fontWeight: "500" }}>
             Create account
           </a>
         </p>
